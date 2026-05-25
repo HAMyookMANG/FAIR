@@ -1,17 +1,19 @@
 # FAIR: Hybrid AI Image Attributor
 
-FAIR는 AI 생성 이미지의 생성 모델/도구를 분류하기 위한 하이브리드 이미지 attribution 파이프라인입니다. 기존 Colab 노트북을 GitHub에서 보기 쉽게 실행할 수 있도록 Python 모듈과 CLI 스크립트로 정리했습니다.
+FAIR is a hybrid image attribution pipeline for classifying the source model or tool of AI-generated images. This repository reorganizes the original research notebook into a cleaner Python package structure with reusable modules and command-line scripts.
 
-## 핵심 아이디어
+## Overview
 
-- **Artifact features**: RGB 통계, 히스토그램, FFT, edge, GLCM, blockiness, noise residual 등 handcrafted feature 추출
-- **DINOv2 embedding**: 이미지의 시각적 표현 학습 feature 추출
-- **OpenCLIP embedding**: 이미지-텍스트 사전학습 모델 기반 feature 추출
-- **Hybrid classifier**: Logistic Regression + XGBoost 확률 평균 ensemble
-- **Unknown 처리**: confidence threshold 이하 예측은 `unknown`으로 처리
-- **추가 실험**: feature ablation, family-level attribution, confidence threshold sweep, post-processing robustness, open-set/OOD 실험
+The pipeline combines handcrafted image artifact features with deep visual embeddings and an ensemble classifier.
 
-## Repository 구조
+- **Artifact features**: RGB statistics, histograms, FFT frequency features, edge features, GLCM texture features, blockiness, and noise residual features
+- **DINOv2 embeddings**: visual representation features extracted from a pretrained DINOv2 model
+- **OpenCLIP embeddings**: visual features extracted from a pretrained OpenCLIP model
+- **Hybrid classifier**: probability-averaged ensemble of Logistic Regression and XGBoost
+- **Unknown handling**: predictions below a confidence threshold are returned as `unknown`
+- **Additional experiments**: feature ablation, family-level attribution, confidence-threshold sweep, post-processing robustness, and open-set/OOD detection
+
+## Repository Structure
 
 ```text
 FAIR/
@@ -37,12 +39,12 @@ FAIR/
         └── experiments.py
 ```
 
-## 설치
+## Installation
 
-GPU 환경을 권장합니다. Colab 또는 CUDA가 설정된 로컬 환경에서 실행하세요.
+A GPU environment is recommended. The code can be run on Google Colab or on a local machine with CUDA configured.
 
 ```bash
-git clone https://github.com/HAMyookMANG/FAIR.git
+git clone <REPOSITORY_URL>
 cd FAIR
 
 python -m venv .venv
@@ -52,7 +54,7 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-PyTorch CUDA wheel을 직접 지정해야 하는 환경이면 아래처럼 먼저 설치한 뒤 requirements를 설치하세요.
+If your environment requires a specific PyTorch CUDA wheel, install PyTorch first and then install the remaining requirements.
 
 ```bash
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
@@ -60,9 +62,9 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-## Dataset 형식
+## Dataset Format
 
-데이터셋 폴더는 class별 하위 폴더 구조를 사용합니다.
+The dataset should be organized by class name. Each class folder contains image files for that generator or tool.
 
 ```text
 finalDataset/
@@ -77,9 +79,11 @@ finalDataset/
 └── firefly/
 ```
 
-## 실행 방법
+Supported image extensions include `.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`, and `.tiff`.
 
-### 1. Feature 추출
+## Usage
+
+### 1. Extract Features
 
 ```bash
 python scripts/extract_features.py \
@@ -89,13 +93,13 @@ python scripts/extract_features.py \
   --n-jobs 4
 ```
 
-생성 파일:
+This creates:
 
 ```text
 outputs/raw_features.pkl
 ```
 
-### 2. 학습 및 평가
+### 2. Train and Evaluate
 
 ```bash
 python scripts/train.py \
@@ -104,13 +108,13 @@ python scripts/train.py \
   --unknown-threshold 0.45
 ```
 
-생성 파일:
+This creates:
 
 ```text
 outputs/hybrid_attributor_artifacts.pkl
 ```
 
-### 3. 전체 파이프라인 한 번에 실행
+### 3. Run the Full Pipeline
 
 ```bash
 python scripts/run_all.py \
@@ -120,7 +124,7 @@ python scripts/run_all.py \
   --n-jobs 4
 ```
 
-### 4. 단일 이미지 예측
+### 4. Predict a Single Image
 
 ```bash
 python scripts/predict.py \
@@ -128,7 +132,7 @@ python scripts/predict.py \
   --bundle outputs/hybrid_attributor_artifacts.pkl
 ```
 
-출력 예시:
+Example output:
 
 ```json
 {
@@ -143,22 +147,25 @@ python scripts/predict.py \
 }
 ```
 
-## Colab에서 사용하기
+## Using on Google Colab
 
-기존 노트북은 `notebooks/FAIR4_0_4.ipynb`에 보관되어 있습니다. Colab에서는 Google Drive를 mount한 뒤 `dataset-dir`만 Drive 경로로 지정하면 됩니다.
+The original notebook is preserved in `notebooks/FAIR4_0_4.ipynb`.
+
+When using Colab, mount Google Drive and pass your dataset path to `--dataset-dir`.
 
 ```bash
 python scripts/run_all.py \
-  --dataset-dir /content/drive/MyDrive/window_AIDetector/finalDataset \
-  --output-dir /content/drive/MyDrive/window_AIDetector/outputs
+  --dataset-dir /content/drive/MyDrive/<DATASET_FOLDER>/finalDataset \
+  --output-dir /content/drive/MyDrive/<OUTPUT_FOLDER>/outputs
 ```
 
-## 주의사항
+## Notes
 
-- DINOv2는 `torch.hub.load("facebookresearch/dinov2", "dinov2_vitb14")`를 사용하므로 첫 실행 시 인터넷 연결이 필요합니다.
-- OpenCLIP `ViT-H-14` 모델은 크기가 크므로 GPU 메모리가 부족하면 batch size를 줄이세요.
-- `outputs/`, `*.pkl`, `*.csv`는 `.gitignore`에 포함되어 있어 GitHub에 올라가지 않습니다.
-- 데이터셋 이미지 원본은 용량과 라이선스 문제를 확인한 뒤 업로드 여부를 결정하세요.
+- DINOv2 is loaded with `torch.hub.load("facebookresearch/dinov2", "dinov2_vitb14")`, so the first run requires an internet connection.
+- OpenCLIP `ViT-H-14` is a large model. If GPU memory is limited, reduce `--batch-size`.
+- Generated files such as `outputs/`, `*.pkl`, and `*.csv` are excluded by `.gitignore`.
+- Do not upload private datasets, model checkpoints, or large generated result files unless you have confirmed storage, licensing, and privacy requirements.
+- Paths in the examples are placeholders. Replace them with your own local or Colab paths.
 
 ## Citation / Acknowledgement
 
